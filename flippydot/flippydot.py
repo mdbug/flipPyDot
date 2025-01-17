@@ -1,11 +1,16 @@
+from functools import cached_property
 import sys
 
 import numpy as np
 
 from .flippymodule import FlippyModule
 
+CV2_WINDOW_NAME = 'FlipDisc Preview'
+
 try:
     import cv2
+
+    cv2.namedWindow(CV2_WINDOW_NAME, cv2.WINDOW_NORMAL)
 except Exception:
     # Do nothing, cv2 is not really required and is only used
     # to display the screen preview if the user asks for it
@@ -20,18 +25,30 @@ class Panel:
     modules = None
     panel_id = 0
 
-    def __init__(self, layout, module_width: int, module_height: int, module_rotation: int = 0,
-                 screen_preview: bool = False):
+    def __init__(
+        self,
+        layout,
+        module_width: int,
+        module_height: int,
+        module_rotation: int = 0,
+        screen_preview: bool = False,
+        screen_preview_scaling_factor: int = 1,
+    ):
         """
         :param layout: An array structure of the panel layout with panel id's
         :param module_width: Module width, normally 28
         :param module_height: Module height, normally 7
         :param module_rotation: Rotation of the module, i.e 0, 90, 180 or 270
         :param screen_preview: If cv2 is installed, can draw preview on screen
+        :param screen_preview_scaling_factor: Scaling factor for the screen preview
         """
         if 'cv2' not in sys.modules and screen_preview:
             print("Screen preview requested, but cv2 not loaded, previews will not be generated")
             screen_preview = False
+
+        if screen_preview_scaling_factor < 1:
+            print("Screen preview scaling factor must be greater than 1")
+            screen_preview_scaling_factor = 1
 
         # Check rotation is valid
         if module_rotation not in self.valid_module_rotations:
@@ -41,7 +58,7 @@ class Panel:
         self.module_height = module_height
         self.module_rotation = module_rotation
         self.screen_preview = screen_preview
-
+        self.screen_preview_scaling_factor = screen_preview_scaling_factor
         # Check we have a valid 2D square array as the layout
         if len(np.shape(layout)) != 2:
             raise Exception("panel layout does not equate to a rectangle/square")
@@ -70,6 +87,14 @@ class Panel:
             return self.module_height * np.shape(self.modules)[0]
         else:
             return self.module_width * np.shape(self.modules)[0]
+
+    @cached_property
+    def total_width(self):
+        return self.get_total_width()
+
+    @cached_property
+    def total_height(self):
+        return self.get_total_height()
 
     def get_content(self):
         y = None
@@ -100,7 +125,12 @@ class Panel:
 
     def draw_preview(self):
         panel_content = self.get_content()
-        cv2.imshow('FlipDisc Preview', np.uint8(panel_content * 255))
+        cv2.imshow(CV2_WINDOW_NAME, np.uint8(panel_content * 255))
+        cv2.resizeWindow(
+            CV2_WINDOW_NAME,
+            self.total_width * self.screen_preview_scaling_factor,
+            self.total_height * self.screen_preview_scaling_factor,
+        )
         cv2.waitKey(1)
 
     def apply_frame(self, matrix_data):
