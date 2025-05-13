@@ -9,8 +9,6 @@ CV2_WINDOW_NAME = 'FlipDisc Preview'
 
 try:
     import cv2
-
-    cv2.namedWindow(CV2_WINDOW_NAME, cv2.WINDOW_NORMAL)
 except Exception:
     # Do nothing, cv2 is not really required and is only used
     # to display the screen preview if the user asks for it
@@ -125,12 +123,9 @@ class Panel:
 
     def draw_preview(self):
         panel_content = self.get_content()
-        cv2.imshow(CV2_WINDOW_NAME, np.uint8(panel_content * 255))
-        cv2.resizeWindow(
-            CV2_WINDOW_NAME,
-            self.total_width * self.screen_preview_scaling_factor,
-            self.total_height * self.screen_preview_scaling_factor,
-        )
+        preview = cv2.resize(np.uint8(panel_content * 255),
+            (self.total_width*self.screen_preview_scaling_factor, self.total_height*self.screen_preview_scaling_factor), interpolation=cv2.INTER_NEAREST)
+        cv2.imshow(CV2_WINDOW_NAME, preview)
         cv2.waitKey(1)
 
     def apply_frame(self, matrix_data):
